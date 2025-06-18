@@ -12,14 +12,15 @@ services:
       - RABBITMQ_DEFAULT_PASS=guest
     healthcheck:
       #test: ["CMD", "curl", "-f", "http://localhost:15672"] #["CMD", "rabbitmq-diagnostics", "ping"]
-      test: rabbitmq-diagnostics -q ping
+      #test: rabbitmq-diagnostics -q ping
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
       start_period: 10s
     networks:
       - rabbitnetwork
-  producer:
+  meters_simulator:
     build:
       context: ./producer
       dockerfile: Dockerfile
@@ -27,14 +28,14 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-        restart: true
+        #restart: true
     environment:
       RABBITMQ_HOST: rabbitmq-host
       RABBITMQ_PORT: 5672
     restart: on-failure
     networks:
       - rabbitnetwork
-  consumer:
+  pv_simulator:
     container_name: consumer
     build:
       context: ./consumer
@@ -43,7 +44,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-        restart: true
+        #restart: true
     environment:
       RABBITMQ_HOST: rabbitmq-host
       RABBITMQ_PORT: 5672
