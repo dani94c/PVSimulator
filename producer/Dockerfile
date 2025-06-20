@@ -4,8 +4,10 @@ RUN apt-get update && apt-get install -y && apt-get clean
 
 WORKDIR /producer
 
-COPY requirements.txt .
-COPY producer.py .
+# COPY requirements.txt .
+# COPY producer.py .
+COPY . .
+ENV PYTHONPATH=/producer
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
 

@@ -28,17 +28,18 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_uncaught_exception
 
-#Mimics actual household consumption patterns generating random, but continues, values (values change smoothly over time)
+# Mimics actual household consumption patterns generating random, but continues, values (values change smoothly over time). 
+# They can assume values from 0.0 to 10.0 kW
 class MeterSimulator:
     def __init__(self):
-        self.current_power = 2.0      #Start at 2kW (reasonable baseline for house power conumptions)
+        self.current_power = 1.0      #Start at 1kW (reasonable baseline for house power conumptions)
         
     def get_next_reading(self):
         # Small random change (±10% of current value, max ±0.5kW)
         max_change = min(0.5, self.current_power * 0.1)
         change = random.uniform(-max_change, max_change)
         
-        self.current_power = max(0.0, min(10.0, self.current_power + change))
+        self.current_power = max(0.0, min(10.0, self.current_power + change))  #Meter must generates values between 0.0 and 10.0 kW
         return round(self.current_power, 2)
 
 
@@ -48,7 +49,9 @@ connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='rabbitmq-host', port=5672))
 channel = connection.channel()
 
-channel.queue_declare(queue='home_power_data')
+# Specify pv_id to which send data in the queue name. 
+# Usefull if in a simulation it's required to emulate more PVs
+channel.queue_declare(queue='home_power_data_pv0')
 
 #msg = f"{datetime.now().strftime("%d/%m/%Y, %H:%M:%S")} Hello World!"
 
@@ -57,16 +60,16 @@ channel.queue_declare(queue='home_power_data')
 #     print(f"[{i}] Sent Hello World")
 #     time.sleep(3)
 
-meter = SimpleMeterSimulator()
+meter = MeterSimulator()
 
 while True:
     power_reading = meter.get_next_reading()
     sampling_timestamp = datetime.now().isoformat()
 
-    print(f'{sampling_timestamp} || METER SIMULATOR || New power consumption generated: {power_reading}')
+    print(f'{sampling_timestamp} || METER SIMULATOR || New power consumption generated: {power_reading} kW')
     
     message = {
-        #meter_id
+        "meter_id": "0",
         "timestamp": sampling_timestamp,
         "meter_power_kw": power_reading,
         "type": "house_meter_reading"
@@ -75,7 +78,7 @@ while True:
     try:
         channel.basic_publish(
             exchange='',
-            routing_key='home_power_data',
+            routing_key='home_power_data_pv0',  
             body=json.dumps(message)
         )
         print(f'Published meter power value: {power_reading} kW')
@@ -83,4 +86,4 @@ while True:
         print(f'Failed to publish message: {e}')
 
     
-    time.sleep(2)  # Reading every 2 seconds
+    time.sleep(2)  # Produce meter reading every 2 seconds
