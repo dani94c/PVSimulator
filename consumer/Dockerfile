@@ -4,8 +4,10 @@ RUN apt-get update && apt-get install -y && apt-get clean
 
 WORKDIR /consumer
 
-COPY requirements.txt .
-COPY consumer.py .
+# COPY requirements.txt .
+# COPY consumer.py .
+COPY . .
+ENV PYTHONPATH=/consumer
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
