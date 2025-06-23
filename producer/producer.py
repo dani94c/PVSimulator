@@ -44,7 +44,7 @@ meter_id = meter_config.get("id",0)     #Default id is 0
 meter_type = meter_config.get("meter_type", "RESIDENTIAL")      #Default type is RESIDENTIAL
 
 #Create required meter simulator
-meter: MeterSimulator = msf.create_producer(meter_type, meter_id)
+meter: MeterSimulator = msf.create_producer(meter_type, meter_id, meter_config)
 if(meter == None):
     logger.error("The specified type of meter is not supported in the simulator. Exit the simulation")
     exit(0)
@@ -84,6 +84,7 @@ while True:
     
     logging.info(f'Sending message: {message}')
     try:
+        # Use default exchange, type direct
         channel.basic_publish(
             exchange='',
             routing_key=queue_name,  

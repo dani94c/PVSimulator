@@ -9,7 +9,6 @@ from time import time
 import os
 import csv
 from datetime import datetime
-from collections import deque
 import logging
 
 #Configure logging
