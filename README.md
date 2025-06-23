@@ -127,15 +127,15 @@ To visualize simulation results:
 ```bash
 python plot_energy_data.py 
 ```
-4. It will be prompted to insert the name of the file with data tho be shown. Write its the path from `data/` folder
+4. It will be prompted to insert the name of the file with data to be shown in the plot. Write its path from `data/` folder
 
 
 ## 📊 Monitoring
 
 RabbitMQ Management: http://localhost:15672
 
-User: guest
-Password: guest
+- User: guest
+- Password: guest
 
 ## 🔧 Extensibility
 
