@@ -1,10 +1,17 @@
 import pika
 from datetime import datetime
 import time
-import random
 import json
 import signal
 import sys
+from meter.meter_simulator_factory import MeterSimulatorFactory
+from meter.meter_simulator import MeterSimulator
+import logging
+from config import meter_config
+
+#Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s || %(levelname)s || METER-SIMULATOR || %(message)s')
+logger = logging.getLogger(__name__)
 
 
 #Handle clean clousure of active connection to rabbitmq broker
@@ -15,7 +22,7 @@ def shutdown_handler(sig, frame):
     if connection.is_open:
         connection.close()
     print("Connection closed.")
-    sys.exit(0)
+    exit(0)
 
 # Register handler for received signals 
 signal.signal(signal.SIGINT, shutdown_handler)
@@ -28,62 +35,63 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_uncaught_exception
 
-# Mimics actual household consumption patterns generating random, but continues, values (values change smoothly over time). 
-# They can assume values from 0.0 to 10.0 kW
-class MeterSimulator:
-    def __init__(self):
-        self.current_power = 1.0      #Start at 1kW (reasonable baseline for house power conumptions)
-        
-    def get_next_reading(self):
-        # Small random change (±10% of current value, max ±0.5kW)
-        max_change = min(0.5, self.current_power * 0.1)
-        change = random.uniform(-max_change, max_change)
-        
-        self.current_power = max(0.0, min(10.0, self.current_power + change))  #Meter must generates values between 0.0 and 10.0 kW
-        return round(self.current_power, 2)
 
 
+#Create producer factory
+msf = MeterSimulatorFactory()
+meter_id = meter_config.get("id",0)     #Default id is 0
 
-#time.sleep(10)
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq-host', port=5672))
-channel = connection.channel()
+meter_type = meter_config.get("meter_type", "RESIDENTIAL")      #Default type is RESIDENTIAL
 
-# Specify pv_id to which send data in the queue name. 
-# Usefull if in a simulation it's required to emulate more PVs
-channel.queue_declare(queue='home_power_data_pv0')
+#Create required meter simulator
+meter: MeterSimulator = msf.create_producer(meter_type, meter_id)
+if(meter == None):
+    logger.error("The specified type of meter is not supported in the simulator. Exit the simulation")
+    exit(0)
 
-#msg = f"{datetime.now().strftime("%d/%m/%Y, %H:%M:%S")} Hello World!"
 
-# for i in range(0,5):
-#     channel.basic_publish(exchange='', routing_key='hello', body=f"[{datetime.now().strftime("%d/%m/%YT%H:%M:%S")}] Hello World!")
-#     print(f"[{i}] Sent Hello World")
-#     time.sleep(3)
+# Setup communication through RabbitMQ
+try: 
+    #time.sleep(10)
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host='rabbitmq-host', port=5672))
+    channel = connection.channel()
 
-meter = MeterSimulator()
+    # Specify pv_id to which send data in the queue name. 
+    # Usefull in a possible future simulator extension, if in a simulation it's required to emulate more PVs and it could be necessary
+    # to specify a specific queue to which send data
+    pv_id = meter_config.get("pv_id","pv0")     #Default use "pv0" as pv_id
+    queue_name = f'home_power_data_{pv_id}'
+    channel.queue_declare(queue=queue_name)
 
+except Exception as e:
+    print(e)
+
+
+#Start simulation
 while True:
     power_reading = meter.get_next_reading()
-    sampling_timestamp = datetime.now().isoformat()
+    sampling_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-    print(f'{sampling_timestamp} || METER SIMULATOR || New power consumption generated: {power_reading} kW')
+    logging.info(f'New power consumption generated at {sampling_timestamp} : {power_reading} kW')
     
     message = {
-        "meter_id": "0",
+        "meter_id": meter.id,
         "timestamp": sampling_timestamp,
         "meter_power_kw": power_reading,
-        "type": "house_meter_reading"
+        "type": f"{meter_type.lower()}_meter_reading"
     }
     
+    logging.info(f'Sending message: {message}')
     try:
         channel.basic_publish(
             exchange='',
-            routing_key='home_power_data_pv0',  
+            routing_key=queue_name,  
             body=json.dumps(message)
         )
-        print(f'Published meter power value: {power_reading} kW')
+        logging.info(f'Published meter power value: {power_reading} kW')
     except Exception as e:
-        print(f'Failed to publish message: {e}')
+        logging.error(f'Failed to publish message: {e}')
 
     
-    time.sleep(2)  # Produce meter reading every 2 seconds
+    time.sleep(meter_config["meter_interval_sec"])  # Produce meter reading every 2 seconds
