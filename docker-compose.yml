@@ -40,7 +40,6 @@ services:
     build:
       context: ./consumer
       dockerfile: Dockerfile
-    restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -48,6 +47,7 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq-host
       RABBITMQ_PORT: 5672
+    restart: on-failure
     volumes:
       - ./data:/pv_simulator/data
     networks:

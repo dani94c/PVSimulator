@@ -38,10 +38,6 @@ class PVSimulator:
         self.data_dir = '/pv_simulator/data'
         self.pv_dir = os.path.join(self.data_dir, f'PV{self.pv_id}')
         self.output_file = os.path.join(self.pv_dir, f'energy_data_{int(time())}.csv')
-
-        
-        # Buffer to store recent meter readings
-        #self.meter_readings = deque(maxlen=1)
         
         # Ensure data directory exists
         os.makedirs(self.pv_dir, exist_ok=True)
@@ -131,14 +127,7 @@ class PVSimulator:
             meter_value = message.get('meter_power_kw',0) #retrieve meter from payload, otherwise set to 0
             timestamp = message.get('timestamp')
             
-            # Store the latest meter reading
-            # self.meter_readings.append({
-            #     'meter_id': meter_id,
-            #     'timestamp': timestamp,
-            #     'meter_value': meter_value
-            # })
-
-            timestamp_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            #timestamp_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             logger.info(f"Received meter reading from meter {meter_id}: {meter_value} kW")
             
             # Generate PV power
