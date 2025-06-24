@@ -10,6 +10,8 @@ COPY . .
 ENV PYTHONPATH=/producer
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN chmod +x wait-for-it.sh
 
 # Run the application
-CMD ["python", "-u", "producer.py"]
+#CMD ["python", "-u", "producer.py"]
+CMD ["./wait-for-it.sh", "rabbitmq:5672", "--timeout=30", "--", "python", "-u", "producer.py"]

@@ -10,7 +10,9 @@ COPY . .
 ENV PYTHONPATH=/consumer
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN chmod +x wait-for-it.sh
 
 # Run the application
 # python -u allows for unbuffered output -> print statements are shown in real time in the terminal
-CMD ["python", "-u", "consumer.py"]
+#CMD ["python", "-u", "consumer.py"]
+CMD ["./wait-for-it.sh", "rabbitmq:5672", "--timeout=30", "--", "python", "-u", "consumer.py"]
